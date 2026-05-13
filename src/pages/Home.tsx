@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Activity, TrendingDown, TrendingUp, Clock } from 'lucide-react';
+import { Activity, TrendingDown, TrendingUp, Clock, Target, Zap, Award, CheckCircle } from 'lucide-react';
 import { TrainingControl } from '@/components/TrainingControl';
 import { MetricCard } from '@/components/MetricCard';
 import { TrainingChart } from '@/components/TrainingChart';
@@ -41,6 +41,8 @@ export default function Home() {
   }, [isTraining, simulator, addMetric, stopTraining]);
 
   const latestMetric = metrics.length > 0 ? metrics[metrics.length - 1] : null;
+  const finalAccuracy = latestMetric ? (latestMetric.accuracy * 100).toFixed(2) : '0.00';
+  const finalLoss = latestMetric ? latestMetric.loss.toFixed(4) : '0.0000';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950">
@@ -65,6 +67,75 @@ export default function Home() {
             模拟大模型学习从地址反推私钥的训练过程，深入理解区块链加密安全
           </p>
         </header>
+
+        {isTraining && (
+          <div className="mb-8 bg-gradient-to-r from-blue-900/50 to-purple-900/50 border border-cyan-500/30 rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Zap className="w-6 h-6 text-cyan-400 animate-pulse" />
+              <h3 className="text-xl font-bold text-white">训练进行中...</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center">
+                <div className="text-4xl font-bold text-cyan-400 mb-2">{currentEpoch}</div>
+                <div className="text-sm text-gray-400">当前轮次</div>
+                <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
+                  <div 
+                    className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-300 rounded-full"
+                    style={{ width: `${totalEpochs > 0 ? (currentEpoch / totalEpochs) * 100 : 0}%` }}
+                  />
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-4xl font-bold text-green-400 mb-2">
+                  {latestMetric ? (latestMetric.accuracy * 100).toFixed(1) : '0.0'}%
+                </div>
+                <div className="text-sm text-gray-400">当前正确率</div>
+                <div className="flex items-center justify-center gap-2 mt-2">
+                  <TrendingUp className="w-4 h-4 text-green-400" />
+                  <span className="text-xs text-green-400">持续提升中</span>
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-4xl font-bold text-red-400 mb-2">
+                  {latestMetric ? latestMetric.loss.toFixed(4) : '0.0000'}
+                </div>
+                <div className="text-sm text-gray-400">损失值 (Loss)</div>
+                <div className="flex items-center justify-center gap-2 mt-2">
+                  <TrendingDown className="w-4 h-4 text-red-400" />
+                  <span className="text-xs text-red-400">正在下降</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {modelTrained && (
+          <div className="mb-8 bg-gradient-to-r from-green-900/50 to-emerald-900/50 border border-green-500/30 rounded-2xl p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <CheckCircle className="w-6 h-6 text-green-400" />
+              <h3 className="text-xl font-bold text-white">训练完成！</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="text-center p-6 bg-gray-900/50 rounded-xl">
+                <Award className="w-12 h-12 text-green-400 mx-auto mb-3" />
+                <div className="text-5xl font-bold text-green-400 mb-2">{finalAccuracy}%</div>
+                <div className="text-lg text-gray-300">最终正确率</div>
+                <div className="text-sm text-gray-500 mt-2">基于 {totalEpochs} 轮训练</div>
+              </div>
+              <div className="text-center p-6 bg-gray-900/50 rounded-xl">
+                <Target className="w-12 h-12 text-red-400 mx-auto mb-3" />
+                <div className="text-5xl font-bold text-red-400 mb-2">{finalLoss}</div>
+                <div className="text-lg text-gray-300">最终损失值</div>
+                <div className="text-sm text-gray-500 mt-2">Loss 越低越好</div>
+              </div>
+            </div>
+            <div className="mt-4 text-center">
+              <p className="text-gray-400 text-sm">
+                💡 模型训练完成，现在可以使用"模型预测演示"功能测试地址到私钥的预测
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <MetricCard

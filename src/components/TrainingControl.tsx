@@ -15,7 +15,7 @@ export const TrainingControl: React.FC = () => {
   } = useAppStore();
   
   const [epochs, setEpochs] = useState(100);
-  const [dataCount, setDataCount] = useState(50);
+  const [dataCount, setDataCount] = useState(100);
 
   const handleStart = () => {
     startTraining(epochs);
