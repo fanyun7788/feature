@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, TrendingDown, TrendingUp, Clock } from 'lucide-react';
+import { TrendingDown, TrendingUp } from 'lucide-react';
 
 interface MetricCardProps {
   title: string;

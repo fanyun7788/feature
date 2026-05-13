@@ -27,7 +27,6 @@ export const useAppStore = create<AppState>((set, get) => {
     simulator: initialSimulator,
     
     startTraining: (epochs = 100) => {
-      const state = get();
       const newSimulator = new TrainingSimulator(epochs);
       newSimulator.startTraining();
       
