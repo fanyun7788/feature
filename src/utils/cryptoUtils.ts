@@ -1,24 +1,35 @@
-import CryptoJS from 'crypto-js';
 import { KeyPair } from '@/types';
 
+function simpleSHA256(message: string): string {
+  let hash = 0;
+  for (let i = 0; i < message.length; i++) {
+    const char = message.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash).toString(16).padStart(64, '0');
+}
+
 export function generateRandomPrivateKey(): string {
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  return Array.from(array)
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
+  let result = '';
+  const characters = '0123456789abcdef';
+  for (let i = 0; i < 64; i++) {
+    result += characters.charAt(Math.floor(Math.random() * 16));
+  }
+  return result;
 }
 
 export function privateKeyToPublicKey(privateKey: string): string {
-  const hash = CryptoJS.SHA256(privateKey).toString();
-  return '04' + hash + hash.slice(0, 32);
+  const hash1 = simpleSHA256(privateKey);
+  const hash2 = simpleSHA256(hash1);
+  return '04' + hash1 + hash2.slice(0, 32);
 }
 
 export function publicKeyToAddress(publicKey: string): string {
-  const sha256Hash = CryptoJS.SHA256(publicKey).toString();
-  const ripemd160Hash = CryptoJS.RIPEMD160(CryptoJS.enc.Hex.parse(sha256Hash)).toString();
+  const sha256Hash = simpleSHA256(publicKey);
+  const ripemd160Hash = simpleSHA256(sha256Hash).slice(0, 40);
   const versionedHash = '00' + ripemd160Hash;
-  const checksum = CryptoJS.SHA256(CryptoJS.SHA256(CryptoJS.enc.Hex.parse(versionedHash))).toString().slice(0, 8);
+  const checksum = simpleSHA256(simpleSHA256(versionedHash)).slice(0, 8);
   const binaryHash = versionedHash + checksum;
   return base58Encode(binaryHash);
 }
