@@ -9,7 +9,11 @@ export interface TrainingMetrics {
 export interface KeyPair {
   privateKey: string;
   publicKey: string;
-  address: string;
+  address: string; // Legacy 地址作为默认
+  legacy?: string;
+  segwitCompatible?: string;
+  segwitNative?: string;
+  taproot?: string;
 }
 
 export interface TrainingState {

@@ -160,22 +160,7 @@ export const DataDisplay: React.FC<DataDisplayProps> = ({ data }) => {
               </div>
               
               <div className="space-y-3">
-                <div>
-                  <div className="text-xs text-cyan-400 mb-1">地址 (Address)</div>
-                  <div className="flex items-center gap-2">
-                    <div className="font-mono text-sm text-gray-300 break-all bg-gray-900/50 p-2 rounded flex-1">
-                      {item.address}
-                    </div>
-                    <button
-                      onClick={() => navigator.clipboard.writeText(item.address)}
-                      className="text-cyan-400 hover:text-cyan-300 p-1"
-                      title="复制地址"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-                
+                {/* 私钥 */}
                 <div>
                   <div className="text-xs text-purple-400 mb-1">私钥 (Private Key)</div>
                   <div className="flex items-center gap-2">
@@ -192,8 +177,85 @@ export const DataDisplay: React.FC<DataDisplayProps> = ({ data }) => {
                   </div>
                 </div>
                 
+                {/* Legacy 地址 */}
+                {item.legacy && (
+                  <div>
+                    <div className="text-xs text-yellow-400 mb-1">普通地址 (Legacy / 1开头)</div>
+                    <div className="flex items-center gap-2">
+                      <div className="font-mono text-sm text-gray-300 break-all bg-gray-900/50 p-2 rounded flex-1">
+                        {item.legacy}
+                      </div>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(item.legacy!)}
+                        className="text-yellow-400 hover:text-yellow-300 p-1"
+                        title="复制地址"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                {/* SegWit Compatible */}
+                {item.segwitCompatible && (
+                  <div>
+                    <div className="text-xs text-blue-400 mb-1">隔离见证兼容地址 (SegWit / 3开头)</div>
+                    <div className="flex items-center gap-2">
+                      <div className="font-mono text-sm text-gray-300 break-all bg-gray-900/50 p-2 rounded flex-1">
+                        {item.segwitCompatible}
+                      </div>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(item.segwitCompatible!)}
+                        className="text-blue-400 hover:text-blue-300 p-1"
+                        title="复制地址"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                {/* SegWit Native */}
+                {item.segwitNative && (
+                  <div>
+                    <div className="text-xs text-cyan-400 mb-1">隔离见证原生地址 (SegWit Native / bc1q开头)</div>
+                    <div className="flex items-center gap-2">
+                      <div className="font-mono text-sm text-gray-300 break-all bg-gray-900/50 p-2 rounded flex-1">
+                        {item.segwitNative}
+                      </div>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(item.segwitNative!)}
+                        className="text-cyan-400 hover:text-cyan-300 p-1"
+                        title="复制地址"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Taproot */}
+                {item.taproot && (
+                  <div>
+                    <div className="text-xs text-green-400 mb-1">Taproot 地址 (bc1p开头)</div>
+                    <div className="flex items-center gap-2">
+                      <div className="font-mono text-sm text-gray-300 break-all bg-gray-900/50 p-2 rounded flex-1">
+                        {item.taproot}
+                      </div>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(item.taproot!)}
+                        className="text-green-400 hover:text-green-300 p-1"
+                        title="复制地址"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                {/* 公钥 */}
                 <div>
-                  <div className="text-xs text-green-400 mb-1">公钥 (Public Key)</div>
+                  <div className="text-xs text-gray-400 mb-1">公钥 (Public Key)</div>
                   <div className="font-mono text-xs text-gray-400 break-all bg-gray-900/50 p-2 rounded">
                     {item.publicKey.slice(0, 64)}...
                   </div>

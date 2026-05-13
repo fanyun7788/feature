@@ -1,131 +1,119 @@
 import { KeyPair } from '@/types';
-import CryptoJS from 'crypto-js';
+import * as bitcoin from 'bitcoinjs-lib';
+import * as ecc from 'tiny-secp256k1';
+import { ECPairFactory } from 'ecpair';
+
+const ECPair = ECPairFactory(ecc);
 
 /**
- * 生成比特币私钥
- * 32字节的随机数（64个十六进制字符）
+ * 将 hex 字符串转换为字节数组
  */
-export function generateRandomPrivateKey(): string {
-  let result = '';
-  const characters = '0123456789abcdef';
-  for (let i = 0; i < 64; i++) {
-    result += characters.charAt(Math.floor(Math.random() * 16));
-  }
-  return result;
-}
-
-/**
- * 将十六进制字符串转换为字节数组
- */
-function hexToBytes(hex: string): number[] {
-  const bytes: number[] = [];
+function hexToBytes(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2);
   for (let i = 0; i < hex.length; i += 2) {
-    bytes.push(parseInt(hex.substr(i, 2), 16));
+    bytes[i / 2] = parseInt(hex.slice(i, i + 2), 16);
   }
   return bytes;
 }
 
 /**
- * 将字节数组转换为十六进制字符串
+ * 将字节数组转换为 hex 字符串
  */
-function bytesToHex(bytes: number[]): string {
-  return bytes.map(b => b.toString(16).padStart(2, '0')).join('');
+function bytesToHex(bytes: Uint8Array): string {
+  return Array.from(bytes)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 /**
- * SHA-256 哈希
+ * 生成随机私钥
  */
-function sha256(data: string | number[]): string {
-  let dataStr: string;
-  if (Array.isArray(data)) {
-    dataStr = bytesToHex(data);
-  } else {
-    dataStr = data;
+export function generateRandomPrivateKey(): string {
+  const keyPair = ECPair.makeRandom();
+  const privateKeyBuffer = keyPair.privateKey;
+  if (!privateKeyBuffer) {
+    throw new Error('Failed to generate private key');
   }
-  
-  const wordArray = CryptoJS.enc.Hex.parse(dataStr);
-  const hash = CryptoJS.SHA256(wordArray);
-  return hash.toString(CryptoJS.enc.Hex);
+  return bytesToHex(privateKeyBuffer);
 }
 
 /**
- * RIPEMD-160 哈希
+ * 从私钥生成所有类型的地址
  */
-function ripemd160(data: string): string {
-  const wordArray = CryptoJS.enc.Hex.parse(data);
-  const hash = CryptoJS.RIPEMD160(wordArray);
-  return hash.toString(CryptoJS.enc.Hex);
-}
-
-/**
- * 模拟椭圆曲线公钥生成（简化版）
- * 真实的比特币使用 secp256k1 曲线，这里用一个确定性的模拟方法
- */
-export function privateKeyToPublicKey(privateKey: string): string {
-  // 模拟公钥生成：04 + x坐标 + y坐标 (未压缩格式)
-  // 真实的比特币公钥是 65字节（33字节压缩或65字节未压缩）
-  const x = sha256(privateKey + 'x');
-  const y = sha256(privateKey + 'y');
-  return '04' + x + y.slice(0, 32);
-}
-
-/**
- * 将公钥转换为比特币地址
- * 完整的比特币地址生成流程
- */
-export function publicKeyToAddress(publicKey: string): string {
-  // 步骤1：SHA-256 哈希公钥
-  const sha256Hash = sha256(publicKey);
-  
-  // 步骤2：RIPEMD-160 哈希
-  const ripemd160Hash = ripemd160(sha256Hash);
-  
-  // 步骤3：添加版本字节 (0x00 = 比特币主网)
-  const versionedHash = '00' + ripemd160Hash;
-  
-  // 步骤4：双重SHA-256 哈希计算校验和
-  const doubleSHA = sha256(sha256(versionedHash));
-  
-  // 步骤5：取前4个字节作为校验和
-  const checksum = doubleSHA.slice(0, 8);
-  
-  // 步骤6：拼接版本+哈希+校验和
-  const binaryHash = versionedHash + checksum;
-  
-  // 步骤7：Base58编码
-  return base58Encode(binaryHash);
-}
-
-/**
- * Base58 编码（比特币格式）
- */
-function base58Encode(hex: string): string {
-  const alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-  let num = BigInt('0x' + hex);
-  let result = '';
-  
-  while (num > 0n) {
-    const remainder = num % 58n;
-    result = alphabet[Number(remainder)] + result;
-    num = num / 58n;
+export function privateKeyToAddresses(privateKeyHex: string): {
+  privateKey: string;
+  publicKey: string;
+  legacy: string;
+  segwitCompatible: string;
+  segwitNative: string;
+  taproot: string;
+} {
+  try {
+    // 从 hex 私钥创建密钥对
+    const privateKeyBytes = hexToBytes(privateKeyHex);
+    const keyPair = ECPair.fromPrivateKey(Buffer.from(privateKeyBytes as any));
+    
+    const publicKey = bytesToHex(keyPair.publicKey);
+    
+    // Legacy 地址 (P2PKH) - 1开头
+    const legacy = bitcoin.payments.p2pkh({ pubkey: keyPair.publicKey }).address || '';
+    
+    // SegWit Compatible 地址 (P2WPKH-nested-in-P2SH) - 3开头
+    const segwitCompatible = bitcoin.payments.p2sh({
+      redeem: bitcoin.payments.p2wpkh({ pubkey: keyPair.publicKey })
+    }).address || '';
+    
+    // SegWit Native 地址 (P2WPKH) - bc1q开头
+    const segwitNative = bitcoin.payments.p2wpkh({ pubkey: keyPair.publicKey }).address || '';
+    
+    // Taproot 地址 (P2TR) - bc1p开头
+    let taproot = '';
+    try {
+      const p2tr = bitcoin.payments.p2tr({
+        internalPubkey: keyPair.publicKey.slice(1, 33)
+      });
+      taproot = p2tr.address || '';
+    } catch (e) {
+      taproot = '';
+    }
+    
+    return {
+      privateKey: privateKeyHex,
+      publicKey,
+      legacy,
+      segwitCompatible,
+      segwitNative,
+      taproot
+    };
+  } catch (error) {
+    console.error('Error in privateKeyToAddresses:', error);
+    return {
+      privateKey: privateKeyHex,
+      publicKey: '',
+      legacy: '',
+      segwitCompatible: '',
+      segwitNative: '',
+      taproot: ''
+    };
   }
-  
-  // 处理前导零
-  for (let i = 0; i < hex.length && hex[i] === '0'; i += 2) {
-    result = '1' + result;
-  }
-  
-  return result || '1';
 }
 
 /**
- * 生成完整的密钥对
+ * 生成密钥对
  */
 export function generateKeyPair(): KeyPair {
   const privateKey = generateRandomPrivateKey();
-  const publicKey = privateKeyToPublicKey(privateKey);
-  const address = publicKeyToAddress(publicKey);
-  return { privateKey, publicKey, address };
+  const addresses = privateKeyToAddresses(privateKey);
+  
+  return {
+    privateKey: addresses.privateKey,
+    publicKey: addresses.publicKey,
+    address: addresses.legacy, // 默认使用 Legacy 地址
+    legacy: addresses.legacy,
+    segwitCompatible: addresses.segwitCompatible,
+    segwitNative: addresses.segwitNative,
+    taproot: addresses.taproot
+  };
 }
 
 /**
@@ -137,4 +125,24 @@ export function generateBatchKeyPairs(count: number): KeyPair[] {
     pairs.push(generateKeyPair());
   }
   return pairs;
+}
+
+// 保持旧的函数名称兼容性
+export function privateKeyToPublicKey(privateKey: string): string {
+  try {
+    const privateKeyBytes = hexToBytes(privateKey);
+    const keyPair = ECPair.fromPrivateKey(Buffer.from(privateKeyBytes as any));
+    return bytesToHex(keyPair.publicKey);
+  } catch {
+    return '';
+  }
+}
+
+export function publicKeyToAddress(publicKey: string): string {
+  try {
+    const publicKeyBytes = hexToBytes(publicKey);
+    return bitcoin.payments.p2pkh({ pubkey: Buffer.from(publicKeyBytes as any) }).address || '';
+  } catch {
+    return '';
+  }
 }
